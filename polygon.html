@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>USDTW — USDT Whale (Polygon)</title>
+<meta name="description" content="USDTW (USDT Whale) on Polygon — fixed 100M supply, immutable contract, $1.00 USDT pair on SushiSwap.">
+<style>
+:root { color-scheme: dark; }
+body { margin: 0; font-family: system-ui, -apple-system, sans-serif; background: #0b1220; color: #e6edf7; line-height: 1.6; }
+.wrap { max-width: 760px; margin: 0 auto; padding: 48px 20px 80px; }
+h1 { font-size: 2.2rem; margin: 0 0 6px; }
+.tag { color: #53b1fd; font-weight: 600; letter-spacing: .4px; }
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 28px 0; }
+.card { background: #111a2e; border: 1px solid #1f2c48; border-radius: 14px; padding: 18px 20px; }
+.card .k { font-size: .78rem; text-transform: uppercase; letter-spacing: .8px; color: #7d8fb3; }
+.card .v { font-size: 1.25rem; font-weight: 700; margin-top: 4px; word-break: break-all; }
+code { background: #0c1730; border: 1px solid #24355c; border-radius: 8px; padding: 3px 8px; font-size: .95em; }
+ul { padding-left: 20px; }
+a { color: #53b1fd; }
+.mono { font-family: ui-monospace, monospace; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>USDTW <span class="tag">USDT Whale</span></h1>
+<p><strong>The USDT Whale token on Polygon.</strong> Fixed supply of 100,000,000. Immutable by design — no owner, no mint, no pause, ever. Liquidity locked forever (LP burned). Trading at $1.00 against USDT on SushiSwap.</p>
+<div class="grid">
+<div class="card"><div class="k">Contract (Polygon)</div><div class="v mono">0xcAD10FD6004EE3cA63bEa76AbD40a31A3cafE443</div></div>
+<div class="card"><div class="k">Price</div><div class="v">$1.00 — USDT pair</div></div>
+<div class="card"><div class="k">Supply</div><div class="v">100,000,000 fixed</div></div>
+<div class="card"><div class="k">Liquidity</div><div class="v">Locked forever (LP burned)</div></div>
+</div>
+<h2>Facts</h2>
+<ul>
+<li>ERC-20, 6 decimals, deployed 2026-11-02 — <a href="https://polygonscan.com/address/0xcAD10FD6004EE3cA63bEa76AbD40a31A3cafE443">verified on Polygonscan</a> (Sourcify exact match)</li>
+<li>No owner functions: no mint, no pause, no blacklist — the contract is immutable</li>
+<li>Pool: <a href="https://polygonscan.com/address/0xeb2dc706801c46121f8025530694Cbba0C59e8E9">USDTW/USDT on SushiSwap V2</a> — 10:10 reserves at exactly $1.00</li>
+<li>LP tokens burned to <code>0x…dEaD</code> — liquidity can never be withdrawn by anyone</li>
+<li>Logo &amp; metadata: <a href="https://raw.githubusercontent.com/afritz77/assets/main/usdtw-polygon-logo.png">official logo</a></li>
+</ul>
+<h2>Token list (wallet-ready JSON)</h2>
+<p class="mono"><code>{"name":"USDT Whale","address":"0xcAD10FD6004EE3cA63bEa76AbD40a31A3cafE443","symbol":"USDTW","decimals":6,"chainId":137,"logoURI":"https://raw.githubusercontent.com/afritz77/assets/main/usdtw-polygon-logo.png"}</code></p>
+<h2>Links</h2>
+<ul>
+<li><a href="https://afritz77.github.io/usdtw-claims/">USDTW holder claims portal</a></li>
+<li><a href="https://dexscreener.com/polygon/0xeb2dc706801c46121f8025530694Cbba0C59e8E9">DexScreener pair</a></li>
+<li><a href="https://github.com/afritz77/default-token-list/blob/main/src/tokens/polygon.json">Canonical token list</a></li>
+</ul>
+</div>
+</body>
+</html>
